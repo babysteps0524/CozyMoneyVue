@@ -38,9 +38,7 @@ const categoryTitle = computed(() => {
 
         <nav flex flex-wrap justify-end gap-1 text-sm font-700>
           <a href="/stock/" p-2 active-scale-0.95> 주식 </a>
-
           <a href="/tax/" p-2 active-scale-0.95> 세금 </a>
-
           <a href="/accounting/" p-2 active-scale-0.95> 재무회계 </a>
 
           <RouterLink to="/calculators/loan/" p-2 active-scale-0.95> 대출 </RouterLink>
@@ -84,16 +82,14 @@ const categoryTitle = computed(() => {
           </p>
 
           <div mt-4 flex flex-wrap gap-3 text-sm text-cm-muted dark:text-cm-dark-muted>
-            <time>
-              {{ post.date }}
-            </time>
+            <time>{{ post.date }}</time>
 
             <span v-if="post.updated"> 수정 {{ post.updated }} </span>
           </div>
         </header>
 
         <div v-for="(section, index) in post.sections ?? []" :key="index" mb-8>
-          <!-- heading -->
+          <!-- 제목 -->
           <h2 v-if="section.type === 'heading' && section.level === 2" text-2xl font-900>
             {{ section.content }}
           </h2>
@@ -106,26 +102,26 @@ const categoryTitle = computed(() => {
             {{ section.content }}
           </h4>
 
-          <!-- paragraph -->
+          <!-- 일반 문단 -->
           <p v-else-if="section.type === 'paragraph'" text-base leading-8>
             {{ section.content }}
           </p>
 
-          <!-- list -->
+          <!-- 순서 없는 목록 -->
           <ul v-else-if="section.type === 'list'" list-disc pl-6 space-y-2>
             <li v-for="(item, itemIndex) in section.items ?? []" :key="itemIndex">
               {{ item }}
             </li>
           </ul>
 
-          <!-- ordered list -->
+          <!-- 순서 있는 목록 -->
           <ol v-else-if="section.type === 'orderedList'" list-decimal pl-6 space-y-2>
             <li v-for="(item, itemIndex) in section.items ?? []" :key="itemIndex">
               {{ item }}
             </li>
           </ol>
 
-          <!-- blockquote -->
+          <!-- 인용문 -->
           <blockquote
             v-else-if="section.type === 'blockquote'"
             border-l-4
@@ -138,7 +134,7 @@ const categoryTitle = computed(() => {
             {{ section.content }}
           </blockquote>
 
-          <!-- info box -->
+          <!-- 정보 박스 -->
           <section
             v-else-if="section.type === 'infoBox'"
             rounded-lg
@@ -152,7 +148,7 @@ const categoryTitle = computed(() => {
             {{ section.content }}
           </section>
 
-          <!-- warning box -->
+          <!-- 주의 박스 -->
           <section
             v-else-if="section.type === 'warningBox'"
             rounded-lg
@@ -166,8 +162,8 @@ const categoryTitle = computed(() => {
             {{ section.content }}
           </section>
 
-          <!-- image -->
-          <figure v-else-if="section.type === 'image' && section.src" m-0>
+          <!-- 이미지 -->
+          <figure v-else-if="section.type === 'image'" m-0>
             <img
               :src="section.src"
               :alt="section.alt ?? post.title ?? 'CozyMoney 이미지'"
@@ -177,30 +173,12 @@ const categoryTitle = computed(() => {
               decoding="async"
             />
 
-            <figcaption
-              v-if="section.credit || section.provider || section.caption"
-              mt-2
-              text-sm
-              text-cm-muted
-              dark:text-cm-dark-muted
-            >
-              <span v-if="section.caption">
-                {{ section.caption }}
-              </span>
-
-              <span v-if="section.credit || section.provider">
-                {{ section.caption ? ' · ' : '' }}
-
-                {{ section.credit }}
-
-                <span v-if="section.provider && !section.credit">
-                  {{ section.provider }}
-                </span>
-              </span>
+            <figcaption v-if="section.credit" mt-2 text-sm text-cm-muted dark:text-cm-dark-muted>
+              {{ section.credit }}
             </figcaption>
           </figure>
 
-          <!-- table -->
+          <!-- 표 -->
           <div v-else-if="section.type === 'table'" overflow-x-auto>
             <table w-full border-collapse text-left>
               <thead>
@@ -234,71 +212,6 @@ const categoryTitle = computed(() => {
               </tbody>
             </table>
           </div>
-
-          <!-- chart -->
-          <section
-            v-else-if="section.type === 'chart'"
-            rounded-lg
-            border
-            border-cm-line
-            bg-cm-surface
-            p-5
-            dark:border-cm-dark-line
-            dark:bg-cm-dark-surface
-          >
-            <h3 v-if="section.title" mb-3 text-lg font-800>
-              {{ section.title }}
-            </h3>
-
-            <p v-if="section.content" leading-7 text-cm-muted dark:text-cm-dark-muted>
-              {{ section.content }}
-            </p>
-          </section>
-
-          <!-- faq section -->
-          <section
-            v-else-if="section.type === 'faq'"
-            rounded-lg
-            border
-            border-cm-line
-            bg-cm-surface
-            p-5
-            dark:border-cm-dark-line
-            dark:bg-cm-dark-surface
-          >
-            <h3 v-if="section.question" text-lg font-800>
-              {{ section.question }}
-            </h3>
-
-            <p v-if="section.answer" mt-2 leading-8 text-cm-muted dark:text-cm-dark-muted>
-              {{ section.answer }}
-            </p>
-          </section>
-
-          <!-- source section -->
-          <section
-            v-else-if="section.type === 'source'"
-            rounded-lg
-            border
-            border-cm-line
-            p-5
-            dark:border-cm-dark-line
-          >
-            <a
-              v-if="section.url"
-              :href="section.url"
-              target="_blank"
-              rel="noopener noreferrer"
-              underline
-              active-scale-0.95
-            >
-              {{ section.title ?? section.url }}
-            </a>
-
-            <span v-else>
-              {{ section.content }}
-            </span>
-          </section>
         </div>
 
         <!-- FAQ -->
@@ -318,7 +231,7 @@ const categoryTitle = computed(() => {
           </div>
         </section>
 
-        <!-- Sources -->
+        <!-- 출처 -->
         <footer
           v-if="post.sources?.length"
           mt-12
