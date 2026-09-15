@@ -1,0 +1,79 @@
+name: Auto Post
+
+on:
+  schedule:
+    # 매일 06:00 KST = 21:00 UTC
+    - cron: "0 21 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: auto-post
+  cancel-in-progress: false
+
+jobs:
+  auto-post:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Generate posts
+        run: bun run autoPost
+        env:
+          DRY_RUN: "false"
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY }}
+
+      - name: Check generated changes
+        id: changes
+        shell: bash
+        run: |
+          if [ -n "$(git status --porcelain -- src/data/posts src/data/image-history.json)" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "자동 포스팅 변경 사항:"
+            git status --short -- src/data/posts src/data/image-history.json
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "새로운 게시글 또는 이미지 기록 변경이 없습니다."
+          fi
+
+      - name: Commit posts
+        if: steps.changes.outputs.changed == 'true'
+        shell: bash
+        run: |
+          git config user.name "CozyMoney Bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # 실행 중 수동 push가 있었다면 최신 main 위에 자동 생성 결과를 재배치
+          git pull --rebase origin main
+
+          git add src/data/posts src/data/image-history.json
+
+          if git diff --cached --quiet; then
+            echo "커밋할 변경 사항이 없습니다."
+            exit 0
+          fi
+
+          git commit -m "chore: automated posts"
+
+      - name: Push posts
+        if: steps.changes.outputs.changed == 'true'
+        run: git push origin HEAD:main
