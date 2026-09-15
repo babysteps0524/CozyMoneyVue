@@ -9,23 +9,36 @@
     "build": "vite build && bun scripts/ssg.ts && bun scripts/generate-sitemap.ts",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier . --write",
+    "format:check": "prettier . --check",
     "autoPost": "bun scripts/automation/index.ts"
   },
   "dependencies": {
-    "@unocss/reset": "^66.10.1",
+    "@unocss/reset": "^66.10.2",
+    "@vue/server-renderer": "^3.5.42",
+    "dotenv": "^17.4.2",
     "vue": "^3.5.42",
-    "zod": "^4.1.5",
-    "@vue/server-renderer": "^3.5.42"
+    "vue-router": "^5.3.1",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "latest",
-    "@unocss/preset-attributify": "^66.10.1",
-    "@unocss/preset-icons": "^66.10.1",
-    "@unocss/preset-typography": "^66.10.1",
-    "@unocss/preset-wind4": "^66.10.1",
-    "@types/node": "^24.3.1",
-    "typescript": "^5.9.2",
-    "unocss": "^66.10.1",
-    "vite": "^8.2.2"
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.5.1",
+    "@unocss/preset-attributify": "^66.10.2",
+    "@unocss/preset-icons": "^66.10.2",
+    "@unocss/preset-typography": "^66.10.2",
+    "@unocss/preset-wind4": "^66.10.2",
+    "@unocss/vite": "^66.10.2",
+    "@vitejs/plugin-vue": "^6.0.9",
+    "eslint": "^10.10.0",
+    "eslint-plugin-vue": "^10.11.0",
+    "prettier": "^3.9.6",
+    "typescript": "^6.0.0",
+    "typescript-eslint": "^8.70.0",
+    "unocss": "^66.10.2",
+    "vite": "^8.3.0",
+    "vue-eslint-parser": "^10.4.1"
   }
 }

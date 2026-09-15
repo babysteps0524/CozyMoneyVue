@@ -1,74 +1,148 @@
-import fs from "node:fs";
-import path from "node:path";
-import { createServer } from "vite";
+import fs from 'node:fs'
+import path from 'node:path'
+import { createServer } from 'vite'
 
-const root = process.cwd();
+const root = process.cwd()
 
-const v = await createServer({
+const vite = await createServer({
   root,
+
   server: {
     middlewareMode: true,
   },
-  appType: "custom",
-});
 
-const m = (await v.ssrLoadModule("/src/entry-server.tsx")) as {
-  routes: () => string[];
-  render: (route: string) => string;
-};
+  appType: 'custom',
+})
 
-// Vite가 이미 빌드한 HTML을 사용한다.
-// 이렇게 하면 해시된 JS/CSS 경로를 직접 처리할 필요가 없다.
-const templatePath = path.join(root, "dist", "index.html");
-
-if (!fs.existsSync(templatePath)) {
-  throw new Error(
-    "dist/index.html을 찾을 수 없습니다. 먼저 vite build를 실행해야 합니다.",
-  );
+const entry = (await vite.ssrLoadModule('/src/entry-server.ts')) as {
+  render: (route: string) => Promise<{
+    html: string
+  }>
 }
 
-const template = fs.readFileSync(templatePath, "utf8");
+const templatePath = path.join(root, 'dist', 'index.html')
 
-function meta(route: string) {
-  let title = "CozyMoney | 금융 정보와 계산기";
-  let desc = "주식·세금·재무회계 정보와 금융 계산기를 제공하는 CozyMoney";
+if (!fs.existsSync(templatePath)) {
+  throw new Error('dist/index.html을 찾을 수 없습니다. 먼저 vite build를 실행해야 합니다.')
+}
 
-  const match = route.match(/^\/(stock|tax|accounting)\/([^/]+)\/$/);
+const template = fs.readFileSync(templatePath, 'utf8')
 
-  if (match) {
-    try {
-      const filePath = path.join(
-        root,
-        "src",
-        "data",
-        "posts",
-        match[1],
-        `${match[2]}.json`,
-      );
+const categories = ['stock', 'tax', 'accounting'] as const
 
-      const post = JSON.parse(fs.readFileSync(filePath, "utf8"));
+const categoryTitles: Record<(typeof categories)[number], string> = {
+  stock: '주식',
+  tax: '세금',
+  accounting: '재무회계',
+}
 
-      title = `${post.title} | CozyMoney`;
-      desc = post.description;
-    } catch {
-      // 게시글 JSON을 읽지 못한 경우 기본 메타데이터 사용
-    }
-  } else if (route === "/stock/") {
-    title = "주식 | CozyMoney";
-  } else if (route === "/tax/") {
-    title = "세금 | CozyMoney";
-  } else if (route === "/accounting/") {
-    title = "재무회계 | CozyMoney";
-  } else if (route === "/calculators/") {
-    title = "금융 계산기 | CozyMoney";
-  } else if (route.includes("/calculators/")) {
-    title = "금융 계산기 | CozyMoney";
+type PostMeta = {
+  slug?: string
+  title?: string
+  description?: string
+  date?: string
+  updated?: string
+}
+
+function readPosts(category: string): PostMeta[] {
+  const directory = path.join(root, 'src', 'data', 'posts', category)
+
+  if (!fs.existsSync(directory)) {
+    return []
   }
 
-  const canonical = `https://cozymoney.kr${route}`;
+  return fs
+    .readdirSync(directory)
+    .filter((file) => file.endsWith('.json'))
+    .map((file) => {
+      const filePath = path.join(directory, file)
 
-  const safeTitle = String(title).replaceAll('"', "&quot;");
-  const safeDescription = String(desc).replaceAll('"', "&quot;");
+      return JSON.parse(fs.readFileSync(filePath, 'utf8')) as PostMeta
+    })
+}
+
+const posts = categories.flatMap((category) =>
+  readPosts(category).map((post) => ({
+    ...post,
+    category,
+  })),
+)
+
+const routes = new Set<string>()
+
+routes.add('/')
+routes.add('/calculators/loan/')
+routes.add('/calculators/savings/')
+routes.add('/calculators/salary/')
+
+for (const category of categories) {
+  routes.add(`/${category}/`)
+
+  for (const post of posts.filter((item) => item.category === category)) {
+    if (post.slug) {
+      routes.add(`/${category}/${post.slug}/`)
+    }
+  }
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('"', '&quot;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+}
+
+function getMeta(route: string) {
+  let title = '코지머니 | 금융 정보와 계산기'
+
+  let description =
+    '코지머니는 주식, 세금, 재무회계 정보와 금융 계산기를 제공하는 금융 정보 사이트입니다.'
+
+  let ogType = 'website'
+
+  const postMatch = route.match(/^\/(stock|tax|accounting)\/([^/]+)\/$/)
+
+  if (postMatch) {
+    const [, category, slug] = postMatch
+
+    const post = posts.find((item) => item.category === category && item.slug === slug)
+
+    if (post) {
+      title = `${post.title ?? '게시글'} | CozyMoney`
+
+      description = post.description ?? 'CozyMoney에서 제공하는 금융 정보입니다.'
+
+      ogType = 'article'
+    }
+  } else {
+    const categoryMatch = route.match(/^\/(stock|tax|accounting)\/$/)
+
+    if (categoryMatch) {
+      const category = categoryMatch[1] as keyof typeof categoryTitles
+
+      title = `${categoryTitles[category]} | CozyMoney`
+
+      description = `${categoryTitles[category]} 관련 금융 정보를 확인할 수 있습니다.`
+    } else if (route === '/calculators/loan/') {
+      title = '대출 계산기 | CozyMoney'
+
+      description = '대출 원리금과 상환액을 계산할 수 있습니다.'
+    } else if (route === '/calculators/savings/') {
+      title = '예금·적금 계산기 | CozyMoney'
+
+      description = '예금과 적금의 예상 이자와 만기 금액을 계산할 수 있습니다.'
+    } else if (route === '/calculators/salary/') {
+      title = '월급·시급 계산기 | CozyMoney'
+
+      description = '월급과 시급을 기준으로 급여를 계산할 수 있습니다.'
+    }
+  }
+
+  const canonical = `https://cozymoney.kr${route}`
+
+  const safeTitle = escapeHtml(title)
+  const safeDescription = escapeHtml(description)
 
   return `
     <title>${safeTitle}</title>
@@ -77,38 +151,59 @@ function meta(route: string) {
       content="${safeDescription}"
     />
     <meta name="robots" content="index,follow" />
-    <link rel="canonical" href="${canonical}" />
-    <meta property="og:title" content="${safeTitle}" />
-    <meta property="og:description" content="${safeDescription}" />
-    <meta property="og:url" content="${canonical}" />
+    <link
+      rel="canonical"
+      href="${canonical}"
+    />
+    <meta
+      property="og:title"
+      content="${safeTitle}"
+    />
+    <meta
+      property="og:description"
+      content="${safeDescription}"
+    />
+    <meta
+      property="og:url"
+      content="${canonical}"
+    />
     <meta
       property="og:type"
-      content="${match ? "article" : "website"}"
+      content="${ogType}"
     />
-    <meta name="twitter:card" content="summary_large_image" />
-  `;
+    <meta
+      name="twitter:card"
+      content="summary_large_image"
+    />
+  `
 }
 
-const routes = m.routes();
+function removeExistingSeo(html: string) {
+  return html
+    .replace(/<title>[\s\S]*?<\/title>\s*/i, '')
+    .replace(/<meta\s+name="description"\s+content="[^"]*"\s*\/?>\s*/i, '')
+    .replace(/<meta\s+name="robots"\s+content="[^"]*"\s*\/?>\s*/i, '')
+    .replace(/<link\s+rel="canonical"\s+href="[^"]*"\s*\/?>\s*/i, '')
+}
 
 for (const route of routes) {
-  const html = template
-    .replace("</head>", `${meta(route)}</head>`)
-    .replace(
-      '<div id="app"></div>',
-      `<div id="app">${await m.render(route)}</div>`,
-    );
+  const result = await entry.render(route)
 
-  const outputDir =
-    route === "/" ? path.join(root, "dist") : path.join(root, "dist", route);
+  const pageTemplate = removeExistingSeo(template)
+
+  const html = pageTemplate
+    .replace('</head>', `${getMeta(route)}</head>`)
+    .replace('<div id="app"></div>', `<div id="app">${result.html}</div>`)
+
+  const outputDir = route === '/' ? path.join(root, 'dist') : path.join(root, 'dist', route)
 
   fs.mkdirSync(outputDir, {
     recursive: true,
-  });
+  })
 
-  fs.writeFileSync(path.join(outputDir, "index.html"), html, "utf8");
+  fs.writeFileSync(path.join(outputDir, 'index.html'), html, 'utf8')
 }
 
-await v.close();
+await vite.close()
 
-console.log(`SSG ${routes.length} pages`);
+console.log(`SSG ${routes.size} pages`)
